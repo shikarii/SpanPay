@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+client/node_modules/
+client/dist/
+
+server/bin/
+server/coverage.out
+
+db/data/

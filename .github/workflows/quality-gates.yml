@@ -1,0 +1,59 @@
+name: Quality Gates
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+jobs:
+  repo-contracts:
+    name: repo-contracts
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required repository artifacts
+        run: |
+          set -euo pipefail
+          test -f AGENTS.md
+          test -f .github/pull_request_template.md
+          test -f docs/architecture.md
+          test -f docs/adr/0000-template.md
+
+  server-go-quality:
+    name: server-go-quality
+    runs-on: [self-hosted, linux, x64]
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: Build
+        run: go build ./...
+
+  client-node-quality:
+    name: client-node-quality
+    runs-on: [self-hosted, linux, x64]
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build

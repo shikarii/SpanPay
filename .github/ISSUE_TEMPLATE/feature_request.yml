@@ -1,0 +1,19 @@
+name: Feature request
+description: Track a new SpanPay capability
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should change?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Why does this matter?
+    validations:
+      required: true
