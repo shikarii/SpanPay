@@ -15,6 +15,12 @@ type DBTX interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
+// QueryableDB extends DBTX with multi-row queries. *sql.DB and *sql.Tx both satisfy this.
+type QueryableDB interface {
+	DBTX
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
 // Transaction is the result of a successful PostTransaction call.
 type Transaction struct {
 	ID        string
