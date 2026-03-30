@@ -79,3 +79,19 @@ func PostingsForTransition(t *Transition, amount int64, feeAmount int64) *Postin
 		return nil
 	}
 }
+
+// AllPostingsForTransition returns posting plans for the transition and any
+// skipped intermediate transitions (from High-Water Mark forward-skip).
+// Plans are returned in chronological order: skipped first, then the final event.
+func AllPostingsForTransition(t *Transition, amount int64, feeAmount int64) []*PostingPlan {
+	var plans []*PostingPlan
+	for i := range t.Skipped {
+		if p := PostingsForTransition(&t.Skipped[i], amount, 0); p != nil {
+			plans = append(plans, p)
+		}
+	}
+	if p := PostingsForTransition(t, amount, feeAmount); p != nil {
+		plans = append(plans, p)
+	}
+	return plans
+}
