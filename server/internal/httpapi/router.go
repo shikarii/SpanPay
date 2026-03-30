@@ -13,10 +13,13 @@ type healthResponse struct {
 	CoreInvariants []string `json:"core_invariants"`
 }
 
-func NewRouter() http.Handler {
+func NewRouter(deps *WebhookDeps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealth)
 	mux.HandleFunc("/v1/payments", handlePayments)
+	if deps != nil {
+		mux.HandleFunc("/webhooks/{provider}", HandleWebhook(*deps))
+	}
 	return mux
 }
 
