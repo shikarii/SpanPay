@@ -105,7 +105,21 @@ The background path should stay explicit:
 - keep the client focused on operations workflows, not user-facing checkout
 - encode major architectural decisions as ADRs instead of rediscovering them in chat
 
-## Related documents
+## Specification documents
+
+Detailed engineering specifications derived from the design research:
+
+- [spec/payment-flows.md](spec/payment-flows.md) - card, ACH, and dispute flow step-by-step sequences
+- [spec/data-model.md](spec/data-model.md) - complete table definitions, constraints, and indexing strategy
+- [spec/state-machine.md](spec/state-machine.md) - state transition table, terminal states, out-of-order handling
+- [spec/ledger-rules.md](spec/ledger-rules.md) - chart of accounts and deterministic posting rules per event
+- [spec/provider-interface.md](spec/provider-interface.md) - unified provider interface, error taxonomy, retry logic
+- [spec/webhook-processing.md](spec/webhook-processing.md) - inbox pattern, signature verification, async workers
+- [spec/idempotency.md](spec/idempotency.md) - key strategy, request hashing, replay and conflict handling
+- [spec/reconciliation.md](spec/reconciliation.md) - three-way match algorithm, tolerance rules, drift detection
+- [spec/failure-handling.md](spec/failure-handling.md) - ambiguous failure scenarios, hard constraints, production pitfalls
+
+## Architecture decision records
 
 - [adr/0000-template.md](adr/0000-template.md)
 - [adr/0001-go-postgres-typescript-foundation.md](adr/0001-go-postgres-typescript-foundation.md)
