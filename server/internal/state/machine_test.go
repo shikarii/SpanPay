@@ -45,11 +45,10 @@ func TestInvalidTransitions(t *testing.T) {
 		from  PaymentState
 		event Event
 	}{
-		{StateNone, EventAuthSuccess},
-		{StateCreated, EventCaptureSuccess},
-		{StateAuthorized, EventRefundRequest},
+		// Backward on happy path: source behind current, no HWM.
 		{StateProcessing, EventAuthSuccess},
 		{StateCaptured, EventAuthSuccess},
+		// Off-path state: HWM doesn't apply.
 		{StateDisputed, EventRefundRequest},
 	}
 	for _, tc := range cases {
@@ -216,6 +215,106 @@ func TestPostingsNilForNoLedgerEvents(t *testing.T) {
 	tr2 := &Transition{From: StateCreated, To: StateFailed, Event: EventAuthFailure}
 	if PostingsForTransition(tr2, 0, 0) != nil {
 		t.Fatal("AUTH_FAILURE should produce no postings")
+	}
+}
+
+// --- High-Water Mark tests ---
+
+func TestHWM_CaptureBeforeAuth(t *testing.T) {
+	// CAPTURE_SUCCESS arrives while payment is still CREATED (AUTH_SUCCESS not yet committed).
+	tr, err := ApplyEvent(StateCreated, EventCaptureSuccess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.To != StateCaptured {
+		t.Fatalf("expected CAPTURED, got %s", tr.To)
+	}
+	if len(tr.Skipped) != 2 {
+		t.Fatalf("expected 2 skipped transitions, got %d", len(tr.Skipped))
+	}
+	// Skipped: AUTH_SUCCESS (CREATED→AUTHORIZED), CAPTURE_REQUEST (AUTHORIZED→PROCESSING)
+	if tr.Skipped[0].Event != EventAuthSuccess {
+		t.Fatalf("expected skipped[0]=AUTH_SUCCESS, got %s", tr.Skipped[0].Event)
+	}
+	if tr.Skipped[1].Event != EventCaptureRequest {
+		t.Fatalf("expected skipped[1]=CAPTURE_REQUEST, got %s", tr.Skipped[1].Event)
+	}
+}
+
+func TestHWM_CaptureFromNone(t *testing.T) {
+	// Extreme: CAPTURE_SUCCESS arrives for a payment that hasn't even been created.
+	tr, err := ApplyEvent(StateNone, EventCaptureSuccess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.To != StateCaptured {
+		t.Fatalf("expected CAPTURED, got %s", tr.To)
+	}
+	if len(tr.Skipped) != 3 {
+		t.Fatalf("expected 3 skipped transitions, got %d", len(tr.Skipped))
+	}
+}
+
+func TestHWM_DisputeFromCreated(t *testing.T) {
+	// DISPUTE_CREATED arrives while payment is still CREATED.
+	tr, err := ApplyEvent(StateCreated, EventDisputeCreated)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.To != StateDisputed {
+		t.Fatalf("expected DISPUTED, got %s", tr.To)
+	}
+	// Should skip: AUTH_SUCCESS, CAPTURE_REQUEST, CAPTURE_SUCCESS
+	if len(tr.Skipped) != 3 {
+		t.Fatalf("expected 3 skipped, got %d", len(tr.Skipped))
+	}
+}
+
+func TestHWM_AuthFromNone(t *testing.T) {
+	// AUTH_SUCCESS before PAYMENT_CREATE committed.
+	tr, err := ApplyEvent(StateNone, EventAuthSuccess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.To != StateAuthorized {
+		t.Fatalf("expected AUTHORIZED, got %s", tr.To)
+	}
+	if len(tr.Skipped) != 1 || tr.Skipped[0].Event != EventPaymentCreate {
+		t.Fatal("expected 1 skipped PAYMENT_CREATE")
+	}
+}
+
+func TestHWM_PostingsIncludeSkipped(t *testing.T) {
+	// CAPTURE_SUCCESS from CREATED: should produce authorize + capture postings.
+	tr, err := ApplyEvent(StateCreated, EventCaptureSuccess)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	plans := AllPostingsForTransition(tr, 10000, 0)
+	// AUTH_SUCCESS produces 2 entries, CAPTURE_SUCCESS produces 4. CAPTURE_REQUEST produces none.
+	if len(plans) != 2 {
+		t.Fatalf("expected 2 posting plans (authorize + capture), got %d", len(plans))
+	}
+	for _, p := range plans {
+		assertBalanced(t, p.Entries)
+	}
+}
+
+func TestHWM_DisputePostingsFromCreated(t *testing.T) {
+	// DISPUTE_CREATED from CREATED with fee: authorize + capture + dispute postings.
+	tr, err := ApplyEvent(StateCreated, EventDisputeCreated)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	plans := AllPostingsForTransition(tr, 10000, 1500)
+	// Skipped: AUTH_SUCCESS (2 entries), CAPTURE_REQUEST (nil), CAPTURE_SUCCESS (4 entries)
+	// Final: DISPUTE_CREATED (4 entries with fee)
+	// So 3 plans: authorize, capture, dispute
+	if len(plans) != 3 {
+		t.Fatalf("expected 3 posting plans, got %d", len(plans))
+	}
+	for _, p := range plans {
+		assertBalanced(t, p.Entries)
 	}
 }
 
