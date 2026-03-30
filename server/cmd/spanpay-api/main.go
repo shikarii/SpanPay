@@ -16,7 +16,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: httpapi.NewRouter(),
+		Handler: httpapi.NewRouter(nil),
 	}
 
 	log.Printf("SpanPay listening on %s", addr)

@@ -11,7 +11,7 @@ func TestHealthRouteReturnsCoreInvariants(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	recorder := httptest.NewRecorder()
 
-	NewRouter().ServeHTTP(recorder, request)
+	NewRouter(nil).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", recorder.Code)
@@ -41,7 +41,7 @@ func TestPaymentsRouteIsExplicitlyUnimplemented(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/v1/payments", nil)
 	recorder := httptest.NewRecorder()
 
-	NewRouter().ServeHTTP(recorder, request)
+	NewRouter(nil).ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusNotImplemented {
 		t.Fatalf("expected 501, got %d", recorder.Code)
