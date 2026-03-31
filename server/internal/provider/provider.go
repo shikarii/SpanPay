@@ -16,13 +16,20 @@ const (
 	StatusPending AttemptStatus = "PENDING"
 )
 
+// PaymentMethod holds tokenized payment details passed to the provider.
+type PaymentMethod struct {
+	Type    string // "card", "bank_transfer", etc.
+	TokenID string // provider-specific token or payment method ID
+}
+
 // NormalizedRequest is the provider-agnostic input for an authorization.
 type NormalizedRequest struct {
-	Amount      int64
-	Currency    string
-	MerchantID  string
-	ExternalRef string
-	Metadata    map[string]string
+	Amount        int64
+	Currency      string
+	MerchantID    string
+	ExternalRef   string
+	PaymentMethod PaymentMethod
+	Metadata      map[string]string
 }
 
 // NormalizedResponse is the provider-agnostic result of any provider operation.
@@ -35,10 +42,12 @@ type NormalizedResponse struct {
 
 // InternalEvent is a normalized webhook event ready for the state machine.
 type InternalEvent struct {
-	PaymentID string
-	Event     state.Event
-	Amount    int64
-	FeeAmount int64
+	PaymentID   string
+	ProviderRef string
+	Event       state.Event
+	Amount      int64
+	FeeAmount   int64
+	Metadata    map[string]string
 }
 
 // Provider defines the contract every PSP adapter must implement.
